@@ -46,6 +46,9 @@ complex_t cNgtv(complex_t z);
 complex_t cAbs(complex_t z);
 complex_t cPhi(complex_t z);
 
+/* Multivariable functions */
+complex_t cAvg(complex_t z1, complex_t z2);
+
 /* Output */
 void printComplex(complex_t z);
 void printComplexLine(complex_t z);

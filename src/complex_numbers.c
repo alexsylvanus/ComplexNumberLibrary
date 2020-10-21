@@ -189,6 +189,20 @@ complex_t cPhi(complex_t z) {
     return Z;
 }
 
+/* Define multivariable functions */
+complex_t cAvg(complex_t z1, complex_t z2) {
+    /* Declare variables */
+    complex_t Z;
+
+    /* Assign values */
+    Z = cAdd(z1, z2);
+    Z.real = Z.real/2;
+    Z.imaginary = Z.imaginary/2;
+
+    /* Return result */
+    return Z;
+}
+
 /* Output */
 void printComplex(complex_t z) {
     /* Check if imaginary part is negative */

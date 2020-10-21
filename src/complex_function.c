@@ -31,12 +31,29 @@ typedef enum {
     ERRORF
 } unaryFunction_e;
 
+typedef enum {
+    AVG,
+    ERRORB
+} binaryFunction_e;
+
 /* Structs */
 typedef struct {
     unaryFunction_e fcode;
     const char* name;
     complex_t(*func)(complex_t);
 } unaryFunction_t;
+
+typedef struct {
+    binaryFunction_e fcode;
+    const char* name;
+    complex_t(*func)(complex_t, complex_t);
+} binaryFunction_t;
+
+/* Unions */
+typedef union {
+    unaryFunction_t unary;
+    binaryFunction_t binary;
+} function_t;
 
 /* ==== Private Functions ==== */
 /* Character classification */
@@ -56,7 +73,7 @@ bool isNumerical(char c) {
 	return ((c>='0' && c<='9') || c == '.');
 }
 bool isOperator(char c) {
-	return (c=='+' || c=='-' || c=='*' || c=='/' || c=='^');
+	return (c=='+' || c=='-' || c=='*' || c=='/' || c=='^' || c==',');
 }
 charType_e labelChar(char c) {
     /* Declare return variable */
@@ -115,7 +132,36 @@ bool isStringUnary(string_t s) {
         return false;
     }
 }
-unaryFunction_t labelFunc(string_t s) {
+bool isStringBinary(string_t s) {
+    /* Check if string is one of the following unary functions */
+    if (
+        sEquals(s, "avg") 
+    ) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+binaryFunction_t labelBFunc(string_t s){    
+    /* Declare return variable */
+    binaryFunction_t f;
+
+    if (isStringBinary(s)) {
+        /* Classify string */
+        if (sEquals(s, "avg")) {
+            f.fcode = AVG;
+            f.func = &cAvg;
+        }
+        
+    }
+    else {
+        f.fcode = ERRORF;
+        f.func = NULL;
+    }
+    f.name = getStr(s);
+    return f;}
+unaryFunction_t labelUFunc(string_t s) {
     /* Declare return variable */
     unaryFunction_t f;
 
@@ -162,19 +208,33 @@ unaryFunction_t labelFunc(string_t s) {
     return f;
 }
 
+function_t labelFunc(string_t s) {
+    function_t f;
+    if (isStringBinary(s)) {
+        f.binary = labelBFunc(s);
+    }
+    else if (isStringUnary(s)) {
+        f.unary = labelUFunc(s);
+    }
+    return f;
+}
+
 /* Operator classification */
 int priority(string_t s) {
     /* Set the priority for the order of operations as an int */
     if (sEquals(s, "^")) {
-        return 4;
+        return 5;
     }
     else if (sEquals(s, "ngtv")) { /* Polarizing a number takes priority over multiplication */
-        return 3;
+        return 4;
     }
     else if (sEquals(s, "*") || sEquals(s, "/")) {
-        return 2;
+        return 3;
     }
     else if (sEquals(s, "+") || sEquals(s, "-")) {
+        return 2;
+    }
+    else if (sEquals(s, ",")) {
         return 1;
     }
     else {
@@ -187,7 +247,7 @@ complex_t computeUnary(complex_t z, string_t s) {
     /* Declare return variable */
     complex_t Z = {0, 0};
 
-    unaryFunction_t f = labelFunc(s);
+    unaryFunction_t f = labelUFunc(s);
     /* Check if function was successfully returned */
     if (f.func != NULL) {
         return (f.func)(z);
@@ -199,6 +259,10 @@ complex_t computeUnary(complex_t z, string_t s) {
 complex_t computeBinary(complex_t z1, complex_t z2, string_t s) {
     // Declare return variable
     complex_t ret = {0, 0};
+
+    /* Declare temp binary function */
+    binaryFunction_t f;
+
     /* Check which operator was passed */
     if (isStringOperator(s)) {
         if (sEquals(s, "+")) {
@@ -215,6 +279,13 @@ complex_t computeBinary(complex_t z1, complex_t z2, string_t s) {
         }
         else if (sEquals(s, "^")) {
             return cPow(z1, z2);
+        }
+    }
+    else if (isStringBinary(s)) {
+        f = labelBFunc(s);
+        /* Check if function was successfully returned */
+        if (f.func != NULL) {
+            return (f.func)(z1, z2);
         }
     }
     else {
@@ -264,6 +335,13 @@ vstring_t parseFunction(string_t s) {
 						// str_temp = sInit("(");
 						break;
 					}
+                    if (isStringBinary(str_temp)) {
+                        pushString(ops, "(");
+                        //pushString(ops, "("); /* Add an extra parentheses that will get resolved by the comma */
+                        pushs_c(ops, &str_temp);
+
+                        break;
+                    }
 					else { 
 						printf("%s is not a valid function preceding (. Invalid format\n", str_temp);
 						exit(0);
@@ -373,6 +451,8 @@ vstring_t parseFunction(string_t s) {
 					pushs_c(parsed, &str_temp);
 				}
 				
+                /* See if operator is comma */
+                
 				// Reset str and num flags
 				str = false;
 				num = false;
@@ -399,7 +479,7 @@ vstring_t parseFunction(string_t s) {
 						}
 					}
 				}
-                
+                // Perform action for closed parentheses
 				pushs_c(ops, &str_temp);
                 // printf("Reached this point\n");
                 break;
@@ -553,6 +633,10 @@ complex_t compute(complexFunction_t f, complex_t z) {
             pushz(complex_vals, computeUnary(popz(complex_vals), str_curr));
         }
         else if (isStringOperator(str_curr)) {
+            /* If its a comma pop and clear */
+            if (sEquals(str_curr, ",")) {
+                str_curr = pops(localstack);
+            }
             z2 = popz(complex_vals);
             z1 = popz(complex_vals);
             pushz(complex_vals, computeBinary(z1, z2, str_curr));

@@ -70,7 +70,8 @@ int main() {
     }
 
     // Test parse func
-    vstring_t stack = parseFunction(sInit("z*(sin(5.8+i))/0.874"));
+    vstring_t stack = parseFunction(sInit("z*(sin(5.8+i))/0.874-avg(z,pi*i)"));
+    vPrintS(stack);
     clears(stack);
 
     // Test Compute function
